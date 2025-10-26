@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Wikipedia Category Tree Explorer</title>
+    <style>
+        :root {
+            --bg: #f5f5f5;
+            --surface: #ffffff;
+            --text: #444444; /* darker in light mode for readability */
+            --text-secondary: #9a9a9a;
+            --border: #e5e5e5;
+            --primary: #0066cc;
+            --panel-shadow: rgba(0,0,0,0.08);
+            --muted-surface: #f2f2f2;
+            --muted-surface-hover: #e6e6e6;
+            --input-bg: #ffffff;
+            --row-hover: #f9f9f9;
+            --hover-accent: #e6f2ff;
+            --link-soft: #0066cc; /* default link blue in light mode */
+        }
+        body.theme-dark {
+            --bg: #121212;
+            --surface: #1e1e1e;
+            --text: #aaaaaa; /* main text matches count numbers */
+            --text-secondary: #8b8b8b;
+            --border: #3a3a3a;
+            --primary: #6aa9ff;
+            --panel-shadow: rgba(0,0,0,0.5);
+            --muted-surface: #3a3a3a;
+            --muted-surface-hover: #4a4a4a;
+            --input-bg: #2a2a2a;
+            --row-hover: rgba(255, 255, 255, 0.05);
+            --hover-accent: rgba(106, 169, 255, 0.18);
+            --link-soft: rgb(141 161 230); /* same tone in dark */
+        }
+        /* Dark mode scrollbar styling */
+        body.theme-dark *::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        body.theme-dark *::-webkit-scrollbar-track {
+            background: var(--surface);
+        }
+        body.theme-dark *::-webkit-scrollbar-thumb {
+            background-color: #535353; /* visible on dark */
+            border-radius: 8px;
+            border: 2px solid var(--surface);
+        }
+        body.theme-dark *::-webkit-scrollbar-thumb:hover {
+            background-color: #6a6a6a;
+        }
+        /* Explicit horizontal scrollbar styling */
+        body.theme-dark *::-webkit-scrollbar:horizontal {
+            height: 10px;
+        }
+        body.theme-dark *::-webkit-scrollbar-track:horizontal {
+            background: var(--surface);
+        }
+        body.theme-dark *::-webkit-scrollbar-thumb:horizontal {
+            background-color: #535353;
+            border-radius: 8px;
+            border: 2px solid var(--surface);
+        }
+        /* Corner between vertical and horizontal scrollbars */
+        body.theme-dark *::-webkit-scrollbar-corner {
+            background: var(--surface);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 0 12px 12px 12px; /* remove top padding to minimize vertical space */
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top bar search: no panel chrome */
+        #input-section {
+            background: transparent;
+            border-radius: 0;
+            padding: 0 84px 0 0; /* reserve space for three top-right icons */
+            margin: 0;
+            box-shadow: none;
+            transition: none;
+        }
+
+        
+
+        
+
+        #input-section label { font-weight: 500; font-size: 13px; display:block; margin-bottom:6px; color: var(--text); }
+        #category-input, #page-input {
+            padding: 1px 5px; width:100%; border:1px solid var(--border); border-radius:4px; font-size:12px;
+            line-height: 16px;
+            font-family:inherit; min-height:20px; resize:none; overflow-y: hidden;
+            background: var(--input-bg); color: var(--text);
+        }
+        /* Primary action buttons */
+        :root { --btn-primary-bg: #2b6fb8; --btn-primary-bg-hover: #225f9e; --btn-primary-text: #ffffff; }
+        body.theme-dark { --btn-primary-bg: #3a6fbf; --btn-primary-bg-hover: #315f9f; --btn-primary-text: #ffffff; }
+        
+
+        
+
+        /* View guards: ensure only main shows search/split and categories panel */
+        body:not([data-view='main']) #input-section,
+        body:not([data-view='main']) #split-view,
+        body:not([data-view='main']) #current-page-categories-panel {
+            display: none !important;
+        }
+        body:not([data-view='main']) .top-actions { display: none !important; }
+
+        /* Split view container */
+        #split-view {
+            display: flex;
+            flex-direction: column;
+            /* Subtract space used by input section + padding */
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+
+        /* Top/Bottom panes share available height equally */
+        #tree-container, #pathfinder-container {
+            background: var(--surface);
+            border-radius: 6px;
+            padding: 12px;
+            box-shadow: 0 1px 3px var(--panel-shadow);
+        }
+
+        #tree-container {
+            flex: 1 1 auto;
+            min-height: 100px;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        
+        .top-actions { position: absolute; top: 0; right: 4px; display: inline-flex; align-items: center; gap: 4px; z-index: 10; }
+
+        
+
+        /* Icon-only actions */
+        #settings-btn,
+        #toggle-current-cats-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;            /* bigger hit area, minimal visuals */
+            height: 24px;
+            color: var(--text);
+        }
+        #home-btn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            color: var(--text);
+        }
+        /* Stronger hover/focus indication while keeping minimal idle state */
+        #settings-btn:hover,
+        #settings-btn:focus-visible,
+        #toggle-current-cats-btn:hover,
+        #toggle-current-cats-btn:focus-visible,
+        #home-btn:hover,
+        #home-btn:focus-visible {
+            background: var(--muted-surface-hover);
+            box-shadow: 0 0 0 1px var(--border) inset;
+        }
+        /* Restore pointer cursor on hover for top-right actions */
+        #settings-btn:hover,
+        #toggle-current-cats-btn:hover,
+        #home-btn:hover { cursor: pointer; }
+        #settings-btn:focus-visible, #toggle-current-cats-btn:focus-visible { outline: none; }
+        #settings-btn svg, #toggle-current-cats-btn svg { width: 14px; height: 14px; display: block; overflow: visible; }
+        /* Toggle shows different icon for on/off */
+        #toggle-current-cats-btn .icon-on { display: inline; }
+        #toggle-current-cats-btn .icon-off { display: none; }
+        #toggle-current-cats-btn[aria-pressed="false"] .icon-on { display: none; }
+        #toggle-current-cats-btn[aria-pressed="false"] .icon-off { display: inline; }
+        #home-btn:focus-visible { outline: none; }
+        #home-btn svg { width: 14px; height: 14px; display: block; overflow: visible; }
+
+        
+
+        #home-category-input {
+            padding: 2px 6px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            font-size: 11px;
+            width: 120px;
+            font-family: inherit;
+            background: var(--input-bg); color: var(--text);
+        }
+
+        .section-divider {
+            border-top: 1px solid var(--border);
+            margin-top: 8px;
+            padding-top: 8px;
+        }
+
+        #pathfinder-container {
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        #tree-container.split-mode {
+            flex: 0 0 auto;
+            height: 50%;
+        }
+
+        #pathfinder-container {
+            flex: 1 1 auto;
+            min-height: 100px;
+        }
+
+        /* Hide settings in main view; they are moved into Settings viewer at runtime */
+        #settings-home-slot { display: none; }
+
+        /* Resizer between tree and pathfinder */
+        #resizer {
+            height: 8px;
+            background: transparent;
+            cursor: ns-resize;
+            position: relative;
+            z-index: 10;
+            display: none; /* Hidden until pathfinder is shown */
+        }
+
+        #resizer:hover { background: var(--muted-surface); }
+        #resizer.active { background: var(--muted-surface-hover); }
+
+        /* tree node styles - compact like Wikipedia */
+        .tree-node { position: relative; line-height: 1.3; }
+        .children-container > .tree-node, .parents-container > .tree-node {
+            margin-left: 12px; padding-left: 6px; border-left: 1px solid var(--border);
+        }
+        
+        .node-content { display:flex; align-items:center; padding:1px 0; gap:3px; min-width: fit-content; }
+        .expand-area { display:flex; align-items:center; gap:3px; cursor:pointer; user-select:none; }
+        .expand-area:hover .node-label { text-decoration: underline; }
+        .expand-icon { display:inline-block; width:12px; text-align:center; font-size:10px; color: var(--text-secondary); transition:transform .15s; flex-shrink:0; }
+        .expand-icon.expanded { transform: rotate(90deg); }
+        .expand-icon.loading { animation: spin 1s linear infinite; }
+        @keyframes spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+        .node-label { color: var(--text); transition:color .15s; font-size:12px; word-wrap: break-word; overflow-wrap: break-word; max-width: 80vw; line-height: 1.3; }
+        .category-link { text-decoration:none; font-size:11px; color: var(--link-soft) !important; padding:1px 3px; border-radius:2px; transition:background .15s; flex-shrink:0; opacity: 0; transition: opacity 0.15s; }
+        .category-link:hover { background:#e6f2ff; }
+        .parent-btn { background: var(--muted-surface); border:1px solid var(--border); color: var(--text); border-radius:2px; padding:1px 4px; cursor:pointer; font-size:11px; transition:background .15s, color .15s; flex-shrink:0; opacity: 0; transition: opacity 0.15s; }
+        .parent-btn:hover { background: var(--muted-surface-hover); color: var(--text); }
+        .parents-container { margin-bottom:2px; }
+        .children-container { margin-top:2px; }
+
+        /* Show buttons on hover */
+        .node-content:hover .category-link,
+        .node-content:hover .parent-btn {
+            opacity: 1;
+        }
+        .error { color:#d32f2f; font-size:12px; margin-left:20px; }
+        .no-children { color: var(--text-secondary); font-size:12px; margin-left:20px; font-style:italic; }
+
+        /* Pathfinder header retained for inverted tree view */
+        .pathfinder-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+        /* Keep close button visible when scrolling the pathfinder */
+        /* Remove top padding so sticky header can sit flush at top */
+        #pathfinder-container { padding-top: 0 !important; }
+
+        #pathfinder-container .pathfinder-header {
+            position: sticky;
+            top: 0;
+            background: var(--surface); /* fully opaque to hide scrolled content */
+            z-index: 100; /* ensure above tree rows */
+            padding-top: 4px;
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+        }
+        .close-pathfinder { background: var(--muted-surface); border:1px solid var(--border); color: var(--text); border-radius:4px; padding:4px 8px; cursor:pointer; }
+        .close-pathfinder:hover { background: var(--muted-surface-hover); }
+        
+
+        
+
+        /* Return to main (settings) link hover */
+        #return-to-main-from-settings-link:hover { text-decoration: underline !important; }
+
+        /* Remove divider line/padding for the first row under input-section */
+        #input-section > .section-divider:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+
+        /* Avoid double border at top of settings list */
+        #settings-content .section-divider:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+        
+
+        /* Autocomplete dropdown styles */
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 2px 4px var(--panel-shadow);
+        }
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+        .autocomplete-item { padding: 8px 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text); }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-item:hover, .autocomplete-item.selected { background: var(--hover-accent); }
+        .autocomplete-loading { padding: 8px 10px; font-size: 13px; color: var(--text-secondary); text-align: center; }
+        /* Inputs theme */
+        input[type="text"], input[type="number"], textarea { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
+        input[type="text"]:focus, input[type="number"]:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 25%, transparent); }
+        input::placeholder, textarea::placeholder { color: var(--text-secondary); }
+        
+        /* Font-size control buttons */
+        #decrease-font-btn, #increase-font-btn, #reset-font-btn { background: var(--muted-surface) !important; border: 1px solid var(--border) !important; color: var(--text) !important; }
+        #decrease-font-btn:hover, #increase-font-btn:hover, #reset-font-btn:hover { background: var(--muted-surface-hover) !important; }
+
+        /* Popout button */
+        #popout-btn { background: var(--muted-surface) !important; border: 1px solid var(--border) !important; color: var(--text) !important; }
+        #popout-btn:hover { background: var(--muted-surface-hover) !important; }
+
+        
+
+        /* Segmented theme toggle */
+        .theme-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .theme-toggle .seg-btn { background: var(--muted-surface); color: var(--text); border: none; padding: 2px 8px; cursor: pointer; }
+        .theme-toggle .seg-btn + .seg-btn { border-left: 1px solid var(--border); }
+        .theme-toggle .seg-btn.active { background: var(--muted-surface-hover); font-weight: 600; }
+
+        /* Dark mode overrides for inline-styled text in panels */
+        body.theme-dark #input-section [style*="color: #666"],
+        body.theme-dark #input-section [style*="color: #555"],
+        body.theme-dark #input-section [style*="color: #333"],
+        body.theme-dark #input-section [style*="color: #222"],
+        body.theme-dark #current-page-categories-panel [style*="color: #666"] {
+            color: var(--text) !important;
+        }
+
+        
+
+        /* Current page categories list */
+        /* Responsive grid columns for current page categories */
+        #current-page-categories-content {
+            display: block;              /* simple inline flow (no columns) */
+        }
+        .current-category-unit {
+            display: inline-block;       /* unbreakable unit in inline flow */
+            white-space: nowrap;         /* keep label + buttons on one line */
+            vertical-align: baseline;
+            margin: 0;                   /* no extra space; comma provides spacing */
+        }
+        #current-page-categories-content .current-category-unit a {
+            display: inline;             /* inline text */
+            white-space: nowrap;         /* do not wrap words */
+            overflow-wrap: normal;
+        }
+        .current-category-btns {
+            display: inline-block;       /* sit right after the link text */
+            white-space: nowrap;         /* keep both buttons together */
+            vertical-align: baseline;    /* align to text */
+            margin-left: 2px;            /* tiny space between text and buttons */
+        }
+        #current-page-categories-content .current-category-unit .parent-btn { line-height: 1; }
+        #current-page-categories-content .parent-btn { padding: 0 2px; opacity: 1 !important; pointer-events: auto; }
+        #current-page-categories-content a { color: var(--link-soft) !important; text-decoration: none; }
+        #current-page-categories-content a:hover,
+        #current-page-categories-content a:focus-visible {
+            text-decoration: underline !important; /* override any inline style */
+            text-underline-offset: 2px;
+        }
+        
+        .current-category-sep { color: #999; margin: 0; }
+
+        /* small screens: make pathfinder smaller */
+        @media (max-height: 520px) {
+            #split-view { height: calc(100vh - 100px); }
+            #tree-container, #pathfinder-container { padding: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-actions">
+        <button id="toggle-current-cats-btn" title="Toggle current page categories panel" aria-label="Toggle current page categories panel" aria-pressed="true">
+            <!-- Eye (on/off) icon pair for clear toggle state -->
+            <svg class="icon-on" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg class="icon-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/>
+                <line x1="4" y1="4" x2="20" y2="20"/>
+            </svg>
+        </button>
+        <button id="settings-btn" title="Open settings" aria-label="Open settings">
+            <svg class="icon-gear" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+        </button>
+        <button id="home-btn" title="Go to home category" aria-label="Go to home category">
+            <!-- Home icon -->
+            <svg class="icon-home" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 9-9 9 9"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 9.75v10.5A1.5 1.5 0 0 0 6 21.75h3.75v-6h4.5v6H18A1.5 1.5 0 0 0 19.5 20.25V9.75"/>
+            </svg>
+        </button>
+    </div>
+    <div id="input-section">
+            <div class="section-divider" style="display: flex; gap: 12px; margin-top: 0; align-items: flex-start;">
+                <div style="flex: 1; min-width: 0; position: relative;">
+                    <textarea id="category-input" rows="1" placeholder="🔍 category"></textarea>
+                    <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+                </div>
+
+                <div style="flex: 1; min-width: 0; position: relative;">
+                    <textarea id="page-input" rows="1" placeholder="🔍 page"></textarea>
+                    <div id="page-autocomplete-dropdown" class="autocomplete-dropdown"></div>
+                </div>
+            </div>
+
+            <div id="settings-home-slot">
+            <div id="settings-blocks">
+            <div class="section-divider">
+                <label for="home-category-input" style="display: inline-flex; align-items: center; font-size: 12px; gap: 6px;">
+                    <span>Home category:</span>
+                    <span style="position: relative; display: inline-flex;">
+                        <input type="text" id="home-category-input" placeholder="Articles">
+                        <div id="home-autocomplete-dropdown" class="autocomplete-dropdown"></div>
+                    </span>
+                </label>
+            </div>
+            <div class="section-divider">
+                <label style="display: flex; align-items: center; font-size: 12px; gap: 6px;">
+                    <span style="white-space: nowrap;">Display size:</span>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <button id="decrease-font-btn" style="padding: 2px 8px; cursor: pointer; font-size: 12px; border: 1px solid #ddd; background: #f0f0f0; border-radius: 3px;">−</button>
+                        <span id="font-size-display" style="min-width: 40px; text-align: center; font-family: 'Monaco', 'Courier New', monospace;">100%</span>
+                        <button id="increase-font-btn" style="padding: 2px 8px; cursor: pointer; font-size: 12px; border: 1px solid #ddd; background: #f0f0f0; border-radius: 3px;">+</button>
+                        <button id="reset-font-btn" style="padding: 2px 8px; cursor: pointer; font-size: 11px; border: 1px solid #ddd; background: #f0f0f0; border-radius: 3px;">Reset</button>
+                    </div>
+                </label>
+            </div>
+            <div class="section-divider">
+                <label style="display: inline-flex; align-items: center; font-size: 12px; gap: 6px;">
+                    <span>Theme:</span>
+                    <span class="theme-toggle" id="theme-toggle" role="group" aria-label="Theme">
+                        <button type="button" class="seg-btn" data-mode="auto">Auto</button>
+                        <button type="button" class="seg-btn" data-mode="light">Light</button>
+                        <button type="button" class="seg-btn" data-mode="dark">Dark</button>
+                    </span>
+                </label>
+            </div>
+            <div class="section-divider">
+                <label style="display: inline-flex; align-items: center; font-size: 12px; gap: 6px;">
+                    <span>Open links in:</span>
+                    <span class="theme-toggle" id="link-target-toggle" role="group" aria-label="Link target">
+                        <button type="button" class="seg-btn" data-mode="current">Current tab</button>
+                        <button type="button" class="seg-btn" data-mode="new">New tab</button>
+                    </span>
+                </label>
+                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary); font-style: italic;">
+                    (Note: If this extension is in a pop-out window, links will always open in a new tab in the previously used normal Chrome window, without changing window focus.)
+                </div>
+            </div>
+            <div class="section-divider">
+                <button id="popout-btn" style="padding: 6px 12px; cursor: pointer; font-size: 12px; border: 1px solid var(--border); background: var(--muted-surface); color: var(--text); border-radius: 4px; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    <span>Open a new pop-out window</span>
+                </button>
+            </div>
+
+
+            </div><!-- /#settings-blocks -->
+            </div><!-- /#settings-home-slot -->
+        </div>
+    </div>
+
+    <!-- Current page categories display (flattened, no collapse) -->
+    <div id="current-page-categories-panel" style="display: none; margin: 4px 0 6px 0;">
+        <div id="current-page-categories-content" style="font-size: 12px; color: var(--text);"></div>
+    </div>
+
+    <div id="split-view">
+        <div id="tree-container"></div>
+        <div id="resizer"></div>
+        <div id="pathfinder-container" style="display:none;"></div>
+    </div>
+
+    
+
+    <!-- Settings viewer -->
+    <div id="settings-viewer" style="display:none; background: var(--surface); border-radius: 6px; padding: 16px; box-shadow: 0 1px 3px var(--panel-shadow); flex: 1; overflow: hidden; min-height: 0; flex-direction: column;">
+        <div class="header" style="display: flex; justify-content: space-between; align-items: flex-start; position: sticky; top: 0; background: var(--surface); padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 12px; z-index: 100;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 16px; font-weight: 600; color: var(--text);">Settings</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+                <a href="#" id="return-to-main-from-settings-link" style="font-size: 12px; color: var(--link-soft); text-decoration: none;">(Return to main view)</a>
+            </div>
+        </div>
+        <div id="settings-content" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    </div>
+
+    
+
+    <script src="sidepanel.js"></script>
+</body>
+</html>

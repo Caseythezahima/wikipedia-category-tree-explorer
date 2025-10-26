@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Wikipedia Category Tree Explorer",
+  "version": "1.0.0",
+  "description": "Navigate Wikipedia's category tree.",
+  "author": "casey",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.wikipedia.org/*"
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open Wikipedia Category Tree Explorer"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

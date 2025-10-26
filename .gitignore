@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# Development/documentation files (not needed for Chrome Web Store)
+STORE_LISTING.md
+PUBLISH_CHECKLIST.md
+
+# Zip files
+*.zip
