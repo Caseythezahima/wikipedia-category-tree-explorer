@@ -7,3 +7,6 @@ PUBLISH_CHECKLIST.md
 
 # Zip files
 *.zip
+
+# for obsidian linking only
+**/wiki category tree explorer extension.md
