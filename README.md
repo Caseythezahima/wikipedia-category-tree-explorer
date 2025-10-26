@@ -7,6 +7,7 @@ A Chrome extension that lets you navigate [Wikipedia's category graph/"hierarchy
 
 ![Alt text](screenshots/1.png)
 
+<br>
 
 Can optionally show the categories of the current page, if that page is a wikipedia page: 
 ![Can optionally show the categories of the current page, if that page is a wikipedia page](screenshots/2.png)
