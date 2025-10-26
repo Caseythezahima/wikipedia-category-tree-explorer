@@ -13,8 +13,12 @@ Can optionally show the categories of the current page, if that page is a wikipe
 ![Can optionally show the categories of the current page, if that page is a wikipedia page](screenshots/2.png)
 
 <br>
+<br>
 
 Can view the inverted tree (makes it easier to traverse up the "tree", since it's not actually a strict hierarchy (categories can have multiple parents, and there are some cycles)): 
+
+<br>
+
 ![inverted tree view option](screenshots/3.png)
 
 ![inverted tree view](screenshots/4.png)
