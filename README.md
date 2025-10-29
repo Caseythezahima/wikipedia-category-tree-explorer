@@ -9,7 +9,7 @@ A Chrome extension that lets you navigate [Wikipedia's category graph/"hierarchy
 
 <br>
 
-Can optionally show the categories of the current page, if that page is a wikipedia page with non-hidden (maintenance) categories: 
+Can optionally show the categories of the current page, if that page is a wikipedia page, and if it has any non-hidden (non-maintenance) categories
 ![Can optionally show the categories of the current page, if that page is a wikipedia page](screenshots/2.png)
 
 <br>
@@ -23,10 +23,6 @@ Can view the inverted tree (makes it easier to traverse up the "tree", since it'
 
 ![inverted tree view](screenshots/4.png)
 
-<br>
-
-settings page:
-![settings page](screenshots/5.png)
 
 <br>
 
@@ -47,8 +43,7 @@ and/or have multiple going at once:
 ## Installation
 
 ### From Chrome Web Store
-Look for the "Wikipedia Category Tree Explorer" extension on the chrome web store (https://chrome.google.com/webstore). 
-- todo: add link 
+https://chromewebstore.google.com/detail/wikipedia-category-tree-e/eppjdfeepdjjcgbklfdlbafjlgbbpmij 
 
 ### Manual Installation 
 1. Download or clone this repository
