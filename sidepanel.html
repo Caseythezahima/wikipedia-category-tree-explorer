@@ -226,7 +226,11 @@
 
         #pathfinder-container {
             flex: 1 1 auto;
-            min-height: 100px;
+            min-height: 100px; /* default when closed */
+        }
+        /* Ensure a visible area when inverted tree is open */
+        body[data-pathfinder-open='true'] #pathfinder-container {
+            min-height: 160px;
         }
 
         /* Hide settings in main view; they are moved into Settings viewer at runtime */
@@ -366,6 +370,13 @@
         
 
         /* Current page categories list */
+        /* Cap at 50% of viewport height; scroll if exceeded (no added chrome) */
+        #current-page-categories-panel {
+            max-height: 40vh;
+            overflow-y: auto;
+            overflow-x: auto; /* vertical only */
+            overscroll-behavior: contain;
+        }
         /* Responsive grid columns for current page categories */
         #current-page-categories-content {
             display: block;              /* simple inline flow (no columns) */
@@ -451,7 +462,7 @@
                 <label for="home-category-input" style="display: inline-flex; align-items: center; font-size: 12px; gap: 6px;">
                     <span>Home category:</span>
                     <span style="position: relative; display: inline-flex;">
-                        <input type="text" id="home-category-input" placeholder="Articles">
+                        <input type="text" id="home-category-input" placeholder="Contents">
                         <div id="home-autocomplete-dropdown" class="autocomplete-dropdown"></div>
                     </span>
                 </label>
@@ -487,6 +498,15 @@
                 </label>
                 <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary); font-style: italic;">
                     (Note: If this extension is in a pop-out window, links will always open in a new tab in the previously used normal Chrome window, without changing window focus.)
+                </div>
+            </div>
+            <div class="section-divider">
+                <label for="show-pages-checkbox" style="display: inline-flex; align-items: center; font-size: 12px; gap: 6px; user-select: none;">
+                    <input type="checkbox" id="show-pages-checkbox" style="width: 14px; height: 14px;">
+                    <span>Show “(pages)” entries</span>
+                </label>
+                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">
+                    Controls whether each category shows a “(pages)” node listing member pages.
                 </div>
             </div>
             <div class="section-divider">

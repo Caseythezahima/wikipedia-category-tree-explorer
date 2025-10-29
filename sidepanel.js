@@ -698,6 +698,7 @@ function preparePathfinderContainer() {
 
     container.style.display = 'block';
     container.innerHTML = '';
+    try { document.body && document.body.setAttribute('data-pathfinder-open', 'true'); } catch (_) {}
 
     const treeContainer = document.getElementById('tree-container');
     const resizer = document.getElementById('resizer');
@@ -722,14 +723,38 @@ function preparePathfinderContainer() {
         }
 
         const availableHeight = totalHeight - resizerHeight;
-        const halfHeight = Math.max(100, Math.round(availableHeight / 2));
-        treeContainer.style.height = `${halfHeight}px`;
+        // Respect pathfinder min-height when open
+        let pfMin = 100;
+        try {
+            const cs = window.getComputedStyle(container);
+            const mh = parseFloat(cs.minHeight) || 0;
+            if (mh > 0) pfMin = mh;
+        } catch (_) {}
+
+        const minTree = 100;
+        const targetHalf = Math.round(availableHeight / 2);
+        const maxTreeAllowed = Math.max(minTree, availableHeight - pfMin);
+        const treeHeight = Math.max(minTree, Math.min(targetHalf, maxTreeAllowed));
+        treeContainer.style.height = `${treeHeight}px`;
     };
 
     if (typeof requestAnimationFrame === 'function') {
         requestAnimationFrame(adjustHeights);
     } else {
         setTimeout(adjustHeights, 0);
+    }
+
+    // Expose for resize/content changes and only bind once
+    window.__adjustSplitHeights = adjustHeights;
+    if (!window.__pathfinderResizeHooked) {
+        window.addEventListener('resize', () => {
+            try {
+                if (container.style.display !== 'none' && typeof window.__adjustSplitHeights === 'function') {
+                    window.__adjustSplitHeights();
+                }
+            } catch (_) {}
+        });
+        window.__pathfinderResizeHooked = true;
     }
 
     return container;
@@ -774,7 +799,10 @@ function initializeReversedTreeView(categoryName, mountEl) {
     closeBtn.onclick = () => {
         mountEl.style.display = 'none';
         document.getElementById('resizer').style.display = 'none';
-        document.getElementById('tree-container').classList.remove('split-mode');
+        const tc = document.getElementById('tree-container');
+        tc.classList.remove('split-mode');
+        tc.style.height = '';
+        try { document.body && document.body.removeAttribute('data-pathfinder-open'); } catch (_) {}
     };
 
     // Create the initial node for the starting category
@@ -958,9 +986,11 @@ async function toggleNode(nodeDiv, categoryName) {
 
                 childrenContainer.innerHTML = '';
 
-                // Add "Pages in category X" special folder at the top
-                const pagesFolderNode = createPagesFolderElement(categoryName);
-                childrenContainer.appendChild(pagesFolderNode);
+                // Add "(pages)" special folder at the top if enabled
+                if (window.__showPagesFolder !== false) {
+                    const pagesFolderNode = createPagesFolderElement(categoryName);
+                    childrenContainer.appendChild(pagesFolderNode);
+                }
 
                 if (subcategories.length === 0) {
                     const noChildren = document.createElement('div');
@@ -1022,6 +1052,7 @@ function init() {
     const themeToggle = document.getElementById('theme-toggle');
     const settingsBtn = document.getElementById('settings-btn');
     const toggleCatsBtn = document.getElementById('toggle-current-cats-btn');
+    const showPagesCheckbox = document.getElementById('show-pages-checkbox');
 
     // Do not mirror current category in the input; keep placeholder unless user types
     input.value = '';
@@ -1070,6 +1101,53 @@ function init() {
             applyFontSize(result.fontSize);
         }
     });
+
+    // Pages folder visibility setting
+    function applyPagesFolderVisibility() {
+        const enabled = window.__showPagesFolder !== false;
+        const tree = document.getElementById('tree-container');
+        if (!tree) return;
+        const categoryNodes = tree.querySelectorAll('.tree-node');
+        categoryNodes.forEach(node => {
+            if (node.classList.contains('pages-folder') || node.classList.contains('page-item')) return;
+            const catName = node.dataset && node.dataset.category;
+            const loaded = node.dataset && node.dataset.loaded === 'true';
+            const children = node.querySelector('.children-container');
+            if (!children || !loaded) return;
+            // Find existing pages folder direct child if any
+            let existing = null;
+            for (const child of children.children) {
+                if (child.classList && child.classList.contains('pages-folder')) { existing = child; break; }
+            }
+            if (!enabled && existing) {
+                existing.remove();
+            } else if (enabled && !existing && catName) {
+                const pf = createPagesFolderElement(catName);
+                children.insertBefore(pf, children.firstChild);
+            }
+        });
+    }
+
+    if (showPagesCheckbox) {
+        // Load stored value (default true)
+        chrome.storage.local.get('showPagesFolder').then(r => {
+            const enabled = Object.prototype.hasOwnProperty.call(r, 'showPagesFolder') ? r.showPagesFolder !== false : true;
+            showPagesCheckbox.checked = enabled;
+            window.__showPagesFolder = enabled;
+            applyPagesFolderVisibility();
+        });
+
+        showPagesCheckbox.addEventListener('change', async (e) => {
+            const enabled = !!e.target.checked;
+            window.__showPagesFolder = enabled;
+            try {
+                await chrome.storage.local.set({ showPagesFolder: enabled });
+            } catch (_) {}
+            applyPagesFolderVisibility();
+        });
+    } else {
+        window.__showPagesFolder = true;
+    }
 
     // Theme: tri-state (auto/light/dark) with migration from legacy darkMode
     function applyTheme(mode) {
@@ -1417,16 +1495,37 @@ function init() {
                     });
                     currentPageCategoriesPanel.style.display = 'block';
                     // Units are unbreakable; no width adjustment needed
+                    // If pathfinder is open, re-balance heights now that top panel height changed
+                    try {
+                        if (typeof window.__adjustSplitHeights === 'function') {
+                            requestAnimationFrame(window.__adjustSplitHeights);
+                        }
+                    } catch (_) {}
                 } else {
-                    currentPageCategoriesContent.textContent = '(no categories found)';
+                    currentPageCategoriesContent.textContent = '(no categories found on current page)';
                     currentPageCategoriesPanel.style.display = 'block';
+                    try {
+                        if (typeof window.__adjustSplitHeights === 'function') {
+                            requestAnimationFrame(window.__adjustSplitHeights);
+                        }
+                    } catch (_) {}
                 }
             } else {
                 currentPageCategoriesPanel.style.display = 'none';
+                try {
+                    if (typeof window.__adjustSplitHeights === 'function') {
+                        requestAnimationFrame(window.__adjustSplitHeights);
+                    }
+                } catch (_) {}
             }
         } catch (error) {
             console.error('Error fetching current page categories:', error);
             currentPageCategoriesPanel.style.display = 'none';
+            try {
+                if (typeof window.__adjustSplitHeights === 'function') {
+                    requestAnimationFrame(window.__adjustSplitHeights);
+                }
+            } catch (_) {}
         }
     }
 
@@ -1947,10 +2046,18 @@ init();
 
         const delta = e.clientY - startY;
         const newTreeHeight = startTreeHeight + delta;
-        const minHeight = 100;
-        const maxHeight = splitView.offsetHeight - minHeight - 8; // 8px for resizer
+        const minTree = 100; // minimum for the top tree
+        let pfMin = 100;     // minimum for the bottom pathfinder (when open)
+        try {
+            const pf = document.getElementById('pathfinder-container');
+            if (pf && window.getComputedStyle) {
+                const mh = parseFloat(window.getComputedStyle(pf).minHeight) || 0;
+                if (mh > 0) pfMin = mh;
+            }
+        } catch (_) {}
+        const maxHeight = splitView.offsetHeight - pfMin - 8; // 8px for resizer
 
-        if (newTreeHeight >= minHeight && newTreeHeight <= maxHeight) {
+        if (newTreeHeight >= minTree && newTreeHeight <= maxHeight) {
             treeContainer.style.height = newTreeHeight + 'px';
         }
     });

@@ -9,7 +9,7 @@ A Chrome extension that lets you navigate [Wikipedia's category graph/"hierarchy
 
 <br>
 
-Can optionally show the categories of the current page, if that page is a wikipedia page: 
+Can optionally show the categories of the current page, if that page is a wikipedia page with non-hidden (maintenance) categories: 
 ![Can optionally show the categories of the current page, if that page is a wikipedia page](screenshots/2.png)
 
 <br>
@@ -35,10 +35,13 @@ dark mode, also chrome lets you click+drag to resize the side panel:
 
 <br>
 
-and if you want even more room you can pop-out the window.
+for more room, you can pop-out the window:
 ![can pop-out the window. helps with seeing big/deep trees. ](screenshots/7.png)
 
+<br> 
 
+and/or have multiple going at once: 
+![multiple going at once](screenshots/8.png)
 
 
 ## Installation
