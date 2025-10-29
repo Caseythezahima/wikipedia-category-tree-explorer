@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Wikipedia Category Tree Explorer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Navigate Wikipedia's category tree.",
   "author": "casey",
   "icons": {
