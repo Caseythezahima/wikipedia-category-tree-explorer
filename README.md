@@ -52,8 +52,9 @@ https://chromewebstore.google.com/detail/wikipedia-category-tree-e/eppjdfeepdjjc
 4. Click "Load unpacked"
 5. Select the extension directory
 
+<br>
 
-# some metrics 
+# Some metrics 
 I explored, but abandoned, the possibility of optionally displaying the count of recursively-reachable subcategories and/or pages alongside each category. The motivation here was wanting to be able to see something like the "weight", or "abstraction weight" of every category. Imagine you saw that a child category had 1000 recursively-reachable subcategories or pages within it, while all the other children had only had a few dozen. If this was surprising, given the semantics of what those children are "about", then this might serve as an indication to you that your map of the territory is maybe missing something important; it might mean there are multiple layers of meaningful distinctions/abstractions that are unknown to you, hidden within the layers, and thus producing what appears to you as an outsized/surprising count/weight. 
 
 <br>
