@@ -55,7 +55,7 @@ https://chromewebstore.google.com/detail/wikipedia-category-tree-e/eppjdfeepdjjc
 <br>
 
 # Some metrics 
-I explored, but abandoned, the possibility of optionally displaying the count of recursively-reachable subcategories and/or pages alongside each category. The motivation here was wanting to be able to see something like the "weight", or "abstraction weight" of every category. 
+I explored, but abandoned, the possibility of optionally displaying the count of recursively-reachable subcategories and/or pages alongside each category. The motivation here was wanting to be able to see something like the "weight", or "abstraction weight", of every category. 
 
 <br>
 
