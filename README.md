@@ -62,6 +62,7 @@ This is mostly because the graph contains weird jumps in ontology known as [cate
 
 
 mathematics 
+
 fields of mathematics 
 applied mathematics 
 applied probability 
