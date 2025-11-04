@@ -1,6 +1,6 @@
 # Wikipedia Category Tree Explorer
 
-A Chrome extension that lets you navigate [Wikipedia's category graph/"hierarchy"/"tree"](https://en.wikipedia.org/wiki/Help:Category) via the [English Wikipedia API](https://www.mediawiki.org/wiki/API:Action_API). 
+A [Chrome extension](https://chromewebstore.google.com/detail/wikipedia-category-tree-e/eppjdfeepdjjcgbklfdlbafjlgbbpmij) that lets you navigate [Wikipedia's category graph/"hierarchy"/"tree"](https://en.wikipedia.org/wiki/Help:Category) via the [English Wikipedia API](https://www.mediawiki.org/wiki/API:Action_API). 
 
 
 
